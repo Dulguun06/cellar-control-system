@@ -27,6 +27,11 @@ public class SensorDataController {
         return repository.findTop2ByOrderByTimestampDesc();
     }
 
+    @GetMapping("/latest/{sensorId}")
+    public SensorData getLatestBySensorId(@PathVariable int sensorId) {
+        return repository.findTopBySensorIdOrderByTimestampDesc(sensorId);
+    }
+
     @GetMapping("/sensor/{id}")
     public List<SensorData> getDataBySensor(@PathVariable int id) {
         return repository.findBySensorId(id);
