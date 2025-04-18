@@ -7,5 +7,5 @@ export const getLatestSensorData = (sensorId) => {
 }
 
 export const getRelayStatus = () => {
-    return axios.get(`${API_URL}/relay/status`)
+    return axios.get(`${API_URL}/relay/latest`)
 }

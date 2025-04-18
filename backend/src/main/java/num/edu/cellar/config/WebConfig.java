@@ -1,5 +1,3 @@
-// src/main/java/num/edu/cellar/config/WebConfig.java
-
 package num.edu.cellar.config;
 
 import org.springframework.context.annotation.Configuration;
