@@ -1,0 +1,17 @@
+System analysis	
+	User Requirement
+	Functional requirement
+	non-functional requirement
+	DFD
+	ERD
+	Use Case диаграм
+	Use Case-ийн тодорхойлолт
+
+System architechture
+	software architecture
+	hardware architecture
+System design
+	UI design
+	Hardware design
+Implementation
+	

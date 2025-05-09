@@ -1,0 +1,4 @@
+Mosquitto start
+
+"C:\Program Files\mosquitto\mosquitto.exe" -c C:\mqtt-config\mosquitto.conf -v
+
