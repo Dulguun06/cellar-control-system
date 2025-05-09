@@ -5,5 +5,4 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SensorConfigRepository extends JpaRepository<SensorConfig, Integer> {
 
-//    SensorConfig getSensorConfigByConfigId(Integer configId);
 }

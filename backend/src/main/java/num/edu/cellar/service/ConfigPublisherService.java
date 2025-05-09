@@ -1,6 +1,7 @@
 package num.edu.cellar.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import num.edu.cellar.model.SensorConfig;
 import num.edu.cellar.repository.SensorConfigRepository;
@@ -14,6 +15,9 @@ public class ConfigPublisherService {
     private final MqttClient mqttClient;
     private final SensorConfigRepository configRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Getter
+    private Integer activeConfigId = null;
 
     public void publishConfigById(Integer id) {
         try {

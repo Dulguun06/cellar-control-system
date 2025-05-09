@@ -4,10 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Data
@@ -17,7 +14,7 @@ import lombok.NoArgsConstructor;
 public class SensorConfig {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer configId;
+    private Integer Id;
 
     private String name;
 
@@ -25,4 +22,8 @@ public class SensorConfig {
     private float maxTemp;
     private float minHum;
     private float maxHum;
+
+    @Setter
+    private boolean isActive;
+
 }

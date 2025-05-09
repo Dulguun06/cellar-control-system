@@ -1,11 +1,10 @@
 <script setup>
-
-import Dashboard from "@/views/Dashboard.vue";
+import 'bootstrap/dist/css/bootstrap.css';
 </script>
 
 <template>
   <main>
-    <Dashboard/>
+    <router-view></router-view>
   </main>
 </template>
 

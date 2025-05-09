@@ -30,4 +30,28 @@ public class ConfigController {
     public void applyConfig(@PathVariable Integer id) {
         publisher.publishConfigById(id); // Sends config to ESP32
     }
+
+    @PutMapping("/{id}")
+    public SensorConfig updateConfig(@PathVariable Integer id, @RequestBody SensorConfig updated) {
+        return repository.findById(id)
+                .map(config -> {
+                    config.setName(updated.getName());
+                    config.setMinTemp(updated.getMinTemp());
+                    config.setMaxTemp(updated.getMaxTemp());
+                    config.setMinHum(updated.getMinHum());
+                    config.setMaxHum(updated.getMaxHum());
+                    return repository.save(config);
+                })
+                .orElseThrow(() -> new RuntimeException("Config not found"));
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteConfig(@PathVariable Integer id) {
+        repository.deleteById(id);
+    }
+    @GetMapping("/active")
+    public SensorConfig getActiveConfig() {
+        Integer id = publisher.getActiveConfigId();
+        return id != null ? repository.findById(id).orElse(null) : null;
+    }
 }
