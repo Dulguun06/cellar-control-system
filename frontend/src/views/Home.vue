@@ -3,7 +3,10 @@
     <!-- Proper Bootstrap Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container-fluid">
-        <a class="navbar-brand" href="/">Cellar Control</a>
+        <!-- Logo and brand name -->
+        <a class="navbar-brand d-flex align-items-center" href="/">
+          <img :src="logo" alt="Logo" width="30" height="30" class="me-2" />
+        </a>
         <button
             class="navbar-toggler"
             type="button"
@@ -41,10 +44,12 @@
 </template>
 
 <script>
-
 import Dashboard from './Dashboard.vue';
 import Configs from './Configs.vue';
 import Profile from './Profile.vue';
+
+// Import the logo image
+import logoImage from '@/assets/logo.png';
 
 export default {
   components: {
@@ -55,6 +60,7 @@ export default {
   data() {
     return {
       activeTab: 'realtime',
+      logo: logoImage,
     };
   },
 };
