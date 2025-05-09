@@ -9,20 +9,28 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class EmailService {
     private final JavaMailSender mailSender;
-    private static final String TO = "dulguunbatbold1@outlook.com";
+    private String recipientEmail = "dulguunbatbold1@outlook.com"; // Default email
 
     public void sendAlert(String subject, String message) {
         SimpleMailMessage mail = new SimpleMailMessage();
-        mail.setTo(TO);
+        mail.setTo(recipientEmail);
         mail.setSubject(subject);
         mail.setText(message);
-        mailSender.send(mail);
         try {
             mailSender.send(mail);
-            System.out.println("✅ Email sent successfully.");
+            System.out.println("✅ Email sent successfully to " + recipientEmail);
         } catch (Exception e) {
             System.err.println("❌ Failed to send email: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    public String getRecipientEmail() {
+        return recipientEmail;
+    }
+
+    public void updateRecipientEmail(String newEmail) {
+        this.recipientEmail = newEmail;
+        System.out.println("📬 Notification email updated to: " + newEmail);
     }
 }

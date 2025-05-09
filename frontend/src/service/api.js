@@ -13,3 +13,7 @@ export const applyConfig = (id) => axios.post(`${API_URL}/config/apply/${id}`)
 export const updateConfig = (id, updatedConfig) => axios.put(`${API_URL}/config/${id}`, updatedConfig)
 export const deleteConfig = (id) => axios.delete(`${API_URL}/config/${id}`)
 export const fetchActiveConfig = () => axios.get(`${API_URL}/config/active`);
+
+export const updateNotificationEmail = (email) => axios.post(`${API_URL}/update-notification-email`, {email});
+export const getNotificationEmail = () => axios.get(`${API_URL}/notification-email`);
+export const setMode = (mode) => axios.post(`${API_URL}/relay/switch-mode`, { mode }) // Post mode change to backend

@@ -111,4 +111,24 @@ public class MqttListenerService {
             e.printStackTrace();
         }
     }
+    // Publish relay control to MQTT
+    public void publishRelayControl(boolean heater, boolean cooler, boolean humidifier, boolean ventilation) {
+        try {
+            String message = String.format("{\"heater\":%b, \"cooler\":%b, \"humidifier\":%b, \"ventilation\":%b}",
+                    heater, cooler, humidifier, ventilation);
+            mqttClient.publish("esp32/relay/control", message.getBytes(), 0, false);
+        } catch (MqttException e) {
+            throw new RuntimeException("Error publishing relay control", e);
+        }
+    }
+
+    // Publish mode switch (manual/auto) to MQTT
+    public void publishModeSwitch(boolean isAutoMode) {
+        try {
+            String message = String.format("{\"isAutoMode\":%b}", isAutoMode);
+            mqttClient.publish("esp32/mode", message.getBytes(), 0, false);
+        } catch (MqttException e) {
+            throw new RuntimeException("Error publishing mode switch", e);
+        }
+    }
 }

@@ -7,13 +7,12 @@
 #define EEPROM_SIZE 4
 #define CONFIG_ID_ADDR 0  // EEPROM address to store config ID
 
-
 // WiFi credentials
-const char *ssid = "Dudu_huurhun";
-const char *password = "95552298";
+const char *ssid = "Tulga";
+const char *password = "80565959";
 
 // MQTT broker
-const char *mqttServer = "192.168.1.11";
+const char *mqttServer = "192.168.1.9";
 const int mqttPort = 1883;
 
 // MQTT topics
@@ -21,6 +20,7 @@ const char *dataTopic = "esp32/data";
 const char *configTopic = "esp32/config";
 const char *relayStatusTopic = "esp32/relay/status";
 const char *alertTopic = "esp32/alert";
+const char *controlTopic = "esp32/control";  // New topic for manual control
 
 // DHT settings
 #define DHTPIN 4
@@ -59,6 +59,9 @@ float lastTemp = NAN;
 float lastHum = NAN;
 const float changeThreshold = 0.1;  // Adjust based on how sensitive you want it
 
+// Control mode
+bool isManualMode = false;  // Flag to track if in manual mode
+
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(EEPROM_SIZE);
@@ -76,7 +79,6 @@ void setup() {
   digitalWrite(VENTILATION, LOW);
 
   connectToWiFi();
-
   configTime(0, 0, "pool.ntp.org");
   while (time(nullptr) < 8 * 3600 * 2) {
     delay(500);
@@ -89,11 +91,16 @@ void setup() {
     if (String(topic) == configTopic) {
       payload[length] = '\0';
       handleConfigUpdate((char *)payload);
+    } else if (String(topic) == controlTopic) {
+      payload[length] = '\0';
+      handleManualControl((char *)payload);  // Handle manual control topic
     }
   });
 
   connectToMQTT();
   client.subscribe(configTopic);
+  client.subscribe(controlTopic);  // Subscribe to manual control topic
+
   int storedConfigId = loadActiveConfigId();
   if (storedConfigId != 0) {
     publishActiveConfigId(storedConfigId);
@@ -127,6 +134,7 @@ void connectToMQTT() {
     if (client.connect("ESP32Client")) {
       Serial.println(" connected!");
       client.subscribe(configTopic);
+      client.subscribe(controlTopic);  // Subscribe to manual control topic
     } else {
       Serial.print(" failed, rc=");
       Serial.println(client.state());
@@ -134,6 +142,7 @@ void connectToMQTT() {
     }
   }
 }
+
 void storeActiveConfigId(int configId) {
   EEPROM.write(CONFIG_ID_ADDR, configId);
   EEPROM.commit();
@@ -179,8 +188,45 @@ void handleConfigUpdate(char *payload) {
   Serial.printf("Temp: %.2f - %.2f | Hum: %.2f - %.2f\n", minTemp, maxTemp, minHum, maxHum);
 }
 
+void handleManualControl(char *payload) {
+  StaticJsonDocument<128> doc;
+  DeserializationError error = deserializeJson(doc, payload);
+  if (error) {
+    Serial.println("Failed to parse manual control JSON");
+    return;
+  }
+
+  if (doc.containsKey("mode")) {
+    String mode = doc["mode"];
+    if (mode == "manual") {
+      isManualMode = true;
+      Serial.println("Manual mode activated.");
+    } else if (mode == "auto") {
+      isManualMode = false;
+      Serial.println("Auto mode activated.");
+    }
+  }
+
+  if (isManualMode) {
+    bool heater = doc["heater"];
+    bool cooler = doc["cooler"];
+    bool humidifier = doc["humidifier"];
+    bool ventilation = doc["ventilation"];
+
+    digitalWrite(HEATER, heater ? HIGH : LOW);
+    digitalWrite(COOLER, cooler ? HIGH : LOW);
+    digitalWrite(HUMIDIFIER, humidifier ? HIGH : LOW);
+    digitalWrite(VENTILATION, ventilation ? HIGH : LOW);
+
+    sendRelayStatus(heater, cooler, humidifier, ventilation);
+  }
+}
 
 void applyControl(float temp, float hum) {
+  if (isManualMode) {
+    return;  // Skip automatic control if in manual mode
+  }
+
   bool isCold = temp < minTemp;
   bool isHot = temp > maxTemp;
   bool isHumid = hum > maxHum;
@@ -214,9 +260,7 @@ void sendSensorData() {
   applyControl(temp, hum);
   checkAndSendAlerts(temp, hum);
 
-  // Only send if temp or hum changed more than the threshold
   if (isnan(lastTemp) || isnan(lastHum) || abs(temp - lastTemp) > changeThreshold || abs(hum - lastHum) > changeThreshold) {
-
     StaticJsonDocument<256> doc;
     JsonObject sensor = doc.createNestedObject("sensor");
     sensor["temp"] = temp;
@@ -228,14 +272,10 @@ void sendSensorData() {
 
     Serial.println("Sensor data changed → sent to MQTT.");
 
-    // Update previous values
     lastTemp = temp;
     lastHum = hum;
-  } else {
-    Serial.println("No change in sensor data → MQTT not sent.");
   }
 }
-
 
 void sendRelayStatus(bool heater, bool cooler, bool humidifier, bool ventilation) {
   StaticJsonDocument<128> doc;

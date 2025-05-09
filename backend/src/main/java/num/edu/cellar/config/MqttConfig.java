@@ -11,7 +11,7 @@ public class MqttConfig {
 
     @Bean
     public MqttClient mqttClient() throws MqttException {
-        String broker = "tcp://192.168.1.11:1883";
+        String broker = "tcp://192.168.1.9:1883";
         String clientId = "SpringBootClient";
         MqttClient client = new MqttClient(broker, clientId);
         MqttConnectOptions options = new MqttConnectOptions();

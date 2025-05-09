@@ -2,6 +2,27 @@
   <div class="container">
     <h2 class="my-3">Configuration Management</h2>
 
+    <!-- Mode Switcher -->
+    <div class="mb-3">
+      <label class="fw-semibold">Mode</label>
+      <div>
+        <button
+            :class="{'btn-primary': isAuto, 'btn-secondary': !isAuto}"
+            class="btn me-2"
+            @click="switchToAuto"
+        >
+          Auto
+        </button>
+        <button
+            :class="{'btn-primary': !isAuto, 'btn-secondary': isAuto}"
+            class="btn"
+            @click="switchToManual"
+        >
+          Manual
+        </button>
+      </div>
+    </div>
+
     <!-- Active Config Display -->
     <div v-if="activeConfig" class="alert alert-success">
       <strong>Active Config:</strong> {{ activeConfig.name }}
@@ -65,11 +86,12 @@
 </template>
 
 <script setup>
-import {onMounted, ref} from "vue"
-import {addConfig, applyConfig, deleteConfig, fetchActiveConfig, getAllConfigs, updateConfig,} from "@/service/api"
+import { onMounted, ref } from 'vue'
+import { addConfig, applyConfig, deleteConfig, fetchActiveConfig, getAllConfigs, updateConfig, setMode } from '@/service/api'
 
 const configs = ref([])
 const activeConfig = ref(null)
+const isAuto = ref(true) // Tracks if the mode is Auto or Manual
 
 const form = ref({
   id: null,
@@ -81,34 +103,50 @@ const form = ref({
 })
 
 const fetchConfigs = async () => {
-  const res = await getAllConfigs()
-  const active = await fetchActiveConfig()
-  activeConfig.value = active.data
-  configs.value = res.data
+  try {
+    const res = await getAllConfigs()
+    const active = await fetchActiveConfig()
+    activeConfig.value = active.data
+    configs.value = res.data
+  } catch (error) {
+    console.error('Error fetching configs:', error)
+  }
 }
 
 const apply = async (id) => {
-  await applyConfig(id)
-  activeConfig.value = configs.value.find(c => c.id === id)
+  try {
+    await applyConfig(id)
+    activeConfig.value = configs.value.find(c => c.id === id)
+  } catch (error) {
+    console.error('Error applying config:', error)
+  }
 }
 
 const save = async () => {
-  if (form.value.id) {
-    await updateConfig(form.value.id, form.value)
-  } else {
-    await addConfig(form.value)
+  try {
+    if (form.value.id) {
+      await updateConfig(form.value.id, form.value)
+    } else {
+      await addConfig(form.value)
+    }
+    await fetchConfigs()
+    reset()
+  } catch (error) {
+    console.error('Error saving config:', error)
   }
-  await fetchConfigs()
-  reset()
 }
 
 const remove = async (id) => {
-  await deleteConfig(id)
-  await fetchConfigs()
+  try {
+    await deleteConfig(id)
+    await fetchConfigs()
+  } catch (error) {
+    console.error('Error removing config:', error)
+  }
 }
 
 const edit = (config) => {
-  form.value = {...config}
+  form.value = { ...config }
 }
 
 const reset = () => {
@@ -122,8 +160,21 @@ const reset = () => {
   }
 }
 
+// Switch to Auto Mode
+const switchToAuto = async () => {
+  isAuto.value = true
+  await setMode(true) // Call backend to set the mode to auto
+}
+
+// Switch to Manual Mode
+const switchToManual = async () => {
+  isAuto.value = false
+  await setMode(false) // Call backend to set the mode to manual
+}
+
 onMounted(fetchConfigs)
 </script>
+
 
 <style scoped>
 .container {
