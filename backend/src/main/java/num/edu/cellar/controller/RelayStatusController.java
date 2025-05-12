@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/relay")
 @RequiredArgsConstructor
@@ -37,10 +39,10 @@ public class RelayStatusController {
 
     // Endpoint to switch between auto and manual mode
     @PostMapping("/switch-mode")
-    public ResponseEntity<String> switchMode(@RequestParam boolean isAutoMode) {
+    public ResponseEntity<String> switchMode(@RequestBody Map<String, Boolean> payload) {
         try {
-            // Publish mode switch to MQTT broker
-            mqttService.publishModeSwitch(isAutoMode);
+            boolean mode = payload.get("mode");
+            mqttService.publishModeSwitch(mode);
             return ResponseEntity.ok("Mode switched successfully.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error switching mode.");

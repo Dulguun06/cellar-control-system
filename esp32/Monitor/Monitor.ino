@@ -8,19 +8,20 @@
 #define CONFIG_ID_ADDR 0  // EEPROM address to store config ID
 
 // WiFi credentials
-const char *ssid = "Tulga";
-const char *password = "80565959";
+const char *ssid = "Dudu_huurhun";
+const char *password = "95552298";
 
 // MQTT broker
-const char *mqttServer = "192.168.1.9";
+const char *mqttServer = "192.168.1.11";
 const int mqttPort = 1883;
 
 // MQTT topics
 const char *dataTopic = "esp32/data";
 const char *configTopic = "esp32/config";
+const char *modeTopic = "esp32/mode";
 const char *relayStatusTopic = "esp32/relay/status";
+const char *manualControlTopic = "esp32/relay/control";
 const char *alertTopic = "esp32/alert";
-const char *controlTopic = "esp32/control";  // New topic for manual control
 
 // DHT settings
 #define DHTPIN 4
@@ -42,11 +43,10 @@ float minHum = 80.0, maxHum = 95.0;
 unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 1000;
 
-// Store previous relay states
-bool lastHeater = false;
-bool lastCooler = false;
-bool lastHumidifier = false;
-bool lastVentilation = false;
+bool heaterStatus = false;
+bool coolerStatus = false;
+bool humidifierStatus = false;
+bool ventilationStatus = false;
 
 // Alert state tracking
 bool tempHighAlertSent = false;
@@ -91,15 +91,20 @@ void setup() {
     if (String(topic) == configTopic) {
       payload[length] = '\0';
       handleConfigUpdate((char *)payload);
-    } else if (String(topic) == controlTopic) {
+    } else if (String(topic) == modeTopic) {
       payload[length] = '\0';
-      handleManualControl((char *)payload);  // Handle manual control topic
+      handleModeSwitch((char *)payload);
+    } else if (String(topic) == manualControlTopic) {
+      payload[length] = '\0';
+      handleManualControl((char *)payload);
     }
   });
 
   connectToMQTT();
   client.subscribe(configTopic);
-  client.subscribe(controlTopic);  // Subscribe to manual control topic
+  client.subscribe(modeTopic);
+  client.subscribe(manualControlTopic);
+
 
   int storedConfigId = loadActiveConfigId();
   if (storedConfigId != 0) {
@@ -134,7 +139,7 @@ void connectToMQTT() {
     if (client.connect("ESP32Client")) {
       Serial.println(" connected!");
       client.subscribe(configTopic);
-      client.subscribe(controlTopic);  // Subscribe to manual control topic
+      client.subscribe(manualControlTopic);  // Subscribe to manual control topic
     } else {
       Serial.print(" failed, rc=");
       Serial.println(client.state());
@@ -161,7 +166,7 @@ void publishActiveConfigId(int configId) {
 
   char buffer[64];
   serializeJson(doc, buffer);
-  client.publish("esp32/status/activeConfig", buffer);
+  client.publish("esp32/config/activeConfig", buffer);
   Serial.printf("Published activeConfigId: %d\n", configId);
 }
 
@@ -178,7 +183,7 @@ void handleConfigUpdate(char *payload) {
   minHum = doc["minHum"] | minHum;
   maxHum = doc["maxHum"] | maxHum;
 
-  int configId = doc["configId"] | 0;
+  int configId = doc["id"] | 0;
   if (configId != 0) {
     storeActiveConfigId(configId);
     publishActiveConfigId(configId);
@@ -187,69 +192,115 @@ void handleConfigUpdate(char *payload) {
   Serial.println("Updated config:");
   Serial.printf("Temp: %.2f - %.2f | Hum: %.2f - %.2f\n", minTemp, maxTemp, minHum, maxHum);
 }
-
-void handleManualControl(char *payload) {
-  StaticJsonDocument<128> doc;
+void handleModeSwitch(char *payload) {
+  StaticJsonDocument<64> doc;
   DeserializationError error = deserializeJson(doc, payload);
   if (error) {
+    Serial.println("Failed to parse mode switch JSON");
+    return;
+  }
+
+  String mode = doc["mode"];
+  if (mode == "false") {
+    isManualMode = true;
+    Serial.println("Switched to MANUAL mode");
+  } else if (mode == "true") {
+    isManualMode = false;
+    Serial.println("Switched to AUTO mode");
+  }
+  sendRelayStatus();
+}
+
+void handleManualControl(char *payload) {
+  if (!isManualMode) {
+    Serial.println("Ignored manual control - not in MANUAL mode");
+    return;
+  }
+
+  StaticJsonDocument<128> doc;
+  if (deserializeJson(doc, payload)) {
     Serial.println("Failed to parse manual control JSON");
     return;
   }
 
-  if (doc.containsKey("mode")) {
-    String mode = doc["mode"];
-    if (mode == "manual") {
-      isManualMode = true;
-      Serial.println("Manual mode activated.");
-    } else if (mode == "auto") {
-      isManualMode = false;
-      Serial.println("Auto mode activated.");
-    }
+  bool newHeater      = doc["heater"];
+  bool newCooler      = doc["cooler"];
+  bool newHumidifier  = doc["humidifier"];
+  bool newVentilation = doc["ventilation"];
+
+  bool changed = false;
+
+  if (newHeater != heaterStatus) {
+    digitalWrite(HEATER, newHeater ? HIGH : LOW);
+    heaterStatus = newHeater;
+    changed = true;
   }
 
-  if (isManualMode) {
-    bool heater = doc["heater"];
-    bool cooler = doc["cooler"];
-    bool humidifier = doc["humidifier"];
-    bool ventilation = doc["ventilation"];
+  if (newCooler != coolerStatus) {
+    digitalWrite(COOLER, newCooler ? HIGH : LOW);
+    coolerStatus = newCooler;
+    changed = true;
+  }
 
-    digitalWrite(HEATER, heater ? HIGH : LOW);
-    digitalWrite(COOLER, cooler ? HIGH : LOW);
-    digitalWrite(HUMIDIFIER, humidifier ? HIGH : LOW);
-    digitalWrite(VENTILATION, ventilation ? HIGH : LOW);
+  if (newHumidifier != humidifierStatus) {
+    digitalWrite(HUMIDIFIER, newHumidifier ? HIGH : LOW);
+    humidifierStatus = newHumidifier;
+    changed = true;
+  }
 
-    sendRelayStatus(heater, cooler, humidifier, ventilation);
+  if (newVentilation != ventilationStatus) {
+    digitalWrite(VENTILATION, newVentilation ? HIGH : LOW);
+    ventilationStatus = newVentilation;
+    changed = true;
+  }
+
+  if (changed) {
+    sendRelayStatus();
+    Serial.println("Manual control applied.");
+  } else {
+    Serial.println("Manual control received, but no changes.");
   }
 }
 
 void applyControl(float temp, float hum) {
-  if (isManualMode) {
-    return;  // Skip automatic control if in manual mode
+  if (isManualMode) return;
+
+  bool newHeater      = temp < minTemp;
+  bool newCooler      = temp > maxTemp;
+  bool newHumidifier  = hum  < minHum;
+  bool newVentilation = hum  > maxHum;
+
+  bool changed = false;
+
+  if (newHeater != heaterStatus) {
+    digitalWrite(HEATER, newHeater ? HIGH : LOW);
+    heaterStatus = newHeater;
+    changed = true;
   }
 
-  bool isCold = temp < minTemp;
-  bool isHot = temp > maxTemp;
-  bool isHumid = hum > maxHum;
-  bool isDry = hum < minHum;
+  if (newCooler != coolerStatus) {
+    digitalWrite(COOLER, newCooler ? HIGH : LOW);
+    coolerStatus = newCooler;
+    changed = true;
+  }
 
-  bool heater = isCold;
-  bool cooler = isHot;
-  bool humidifier = isDry;
-  bool ventilation = isHumid;
+  if (newHumidifier != humidifierStatus) {
+    digitalWrite(HUMIDIFIER, newHumidifier ? HIGH : LOW);
+    humidifierStatus = newHumidifier;
+    changed = true;
+  }
 
-  digitalWrite(HEATER, heater ? HIGH : LOW);
-  digitalWrite(COOLER, cooler ? HIGH : LOW);
-  digitalWrite(HUMIDIFIER, humidifier ? HIGH : LOW);
-  digitalWrite(VENTILATION, ventilation ? HIGH : LOW);
+  if (newVentilation != ventilationStatus) {
+    digitalWrite(VENTILATION, newVentilation ? HIGH : LOW);
+    ventilationStatus = newVentilation;
+    changed = true;
+  }
 
-  if (heater != lastHeater || cooler != lastCooler || humidifier != lastHumidifier || ventilation != lastVentilation) {
-    sendRelayStatus(heater, cooler, humidifier, ventilation);
-    lastHeater = heater;
-    lastCooler = cooler;
-    lastHumidifier = humidifier;
-    lastVentilation = ventilation;
+  if (changed) {
+    sendRelayStatus();  // Only send if anything changed
   }
 }
+
 
 void sendSensorData() {
   float temp = dht.readTemperature();
@@ -277,62 +328,58 @@ void sendSensorData() {
   }
 }
 
-void sendRelayStatus(bool heater, bool cooler, bool humidifier, bool ventilation) {
+void sendRelayStatus() {
   StaticJsonDocument<128> doc;
-  doc["heater"] = heater;
-  doc["cooler"] = cooler;
-  doc["humidifier"] = humidifier;
-  doc["ventilation"] = ventilation;
-
+  doc["heater"] = heaterStatus;
+  doc["cooler"] = coolerStatus;
+  doc["humidifier"] = humidifierStatus;
+  doc["ventilation"] = ventilationStatus;
   char buffer[128];
-  size_t len = serializeJson(doc, buffer);
-  client.publish(relayStatusTopic, buffer, len);
-
-  Serial.println("Relay status updated:");
-  Serial.println(buffer);
+  serializeJson(doc, buffer);
+  client.publish(relayStatusTopic, buffer);
 }
 
 void checkAndSendAlerts(float temp, float hum) {
   StaticJsonDocument<128> alertDoc;
   bool alertTriggered = false;
 
-  if (temp > maxTemp && !tempHighAlertSent) {
+  if (temp > (maxTemp + 10) && !tempHighAlertSent) {
     alertDoc["type"] = "TEMP_HIGH";
-    alertDoc["message"] = "Temperature is too high!";
+    alertDoc["message"] = "Temperature is extremely high!";
     alertDoc["value"] = temp;
     tempHighAlertSent = true;
     alertTriggered = true;
-  } else if (temp <= maxTemp) {
+  } else if (temp <= (maxTemp + 10)) {
     tempHighAlertSent = false;
   }
 
-  if (temp < minTemp && !tempLowAlertSent) {
+  if (temp < (minTemp - 10) && !tempLowAlertSent) {
     alertDoc["type"] = "TEMP_LOW";
-    alertDoc["message"] = "Temperature is too low!";
+    alertDoc["message"] = "Temperature is extremely low!";
     alertDoc["value"] = temp;
     tempLowAlertSent = true;
     alertTriggered = true;
-  } else if (temp >= minTemp) {
+  } else if (temp >= (minTemp - 10)) {
     tempLowAlertSent = false;
   }
 
-  if (hum > maxHum && !humHighAlertSent) {
+  if (hum > (maxHum + 10) && !humHighAlertSent) {
     alertDoc["type"] = "HUM_HIGH";
-    alertDoc["message"] = "Humidity is too high!";
+    alertDoc["message"] = "Humidity is extremely high!";
     alertDoc["value"] = hum;
     humHighAlertSent = true;
     alertTriggered = true;
-  } else if (hum <= maxHum) {
+  } else if (hum <= (maxHum + 10)) {
     humHighAlertSent = false;
   }
 
-  if (hum < minHum && !humLowAlertSent) {
+  if (hum < (minHum - 10) && !humLowAlertSent) {
     alertDoc["type"] = "HUM_LOW";
-    alertDoc["message"] = "Humidity is too low!";
+    alertDoc["message"] = "Humidity is extremely low!";
     alertDoc["value"] = hum;
     humLowAlertSent = true;
     alertTriggered = true;
-  } else if (hum >= minHum) {
+  } else if (hum >= (minHum - 10)) {
     humLowAlertSent = false;
   }
 

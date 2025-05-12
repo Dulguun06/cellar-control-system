@@ -16,4 +16,7 @@ export const fetchActiveConfig = () => axios.get(`${API_URL}/config/active`);
 
 export const updateNotificationEmail = (email) => axios.post(`${API_URL}/update-notification-email`, {email});
 export const getNotificationEmail = () => axios.get(`${API_URL}/notification-email`);
-export const setMode = (mode) => axios.post(`${API_URL}/relay/switch-mode`, { mode }) // Post mode change to backend
+export const setMode = (mode) => axios.post(`${API_URL}/relay/switch-mode`, {mode}) // Post mode change to backend
+// export const fetchCurrentMode = () => axios.get('/api/mode')
+export const sendManualCommand = (relayStates) => axios.post(`${API_URL}/relay/manual-control`, relayStates)
+

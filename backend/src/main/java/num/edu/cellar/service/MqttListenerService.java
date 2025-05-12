@@ -123,9 +123,9 @@ public class MqttListenerService {
     }
 
     // Publish mode switch (manual/auto) to MQTT
-    public void publishModeSwitch(boolean isAutoMode) {
+    public void publishModeSwitch(boolean mode) {
         try {
-            String message = String.format("{\"isAutoMode\":%b}", isAutoMode);
+            String message = String.format("{\"mode\":%b}", mode);
             mqttClient.publish("esp32/mode", message.getBytes(), 0, false);
         } catch (MqttException e) {
             throw new RuntimeException("Error publishing mode switch", e);

@@ -1,97 +1,104 @@
 <template>
-  <div class="container">
-    <h2 class="my-3">Configuration Management</h2>
+  <div class="container py-4">
+    <h2 class="mb-4 fw-bold text-primary">🛠️ Configuration Management</h2>
 
-    <!-- Mode Switcher -->
-    <div class="mb-3">
-      <label class="fw-semibold">Mode</label>
-      <div>
-        <button
-            :class="{'btn-primary': isAuto, 'btn-secondary': !isAuto}"
-            class="btn me-2"
-            @click="switchToAuto"
-        >
-          Auto
-        </button>
-        <button
-            :class="{'btn-primary': !isAuto, 'btn-secondary': isAuto}"
-            class="btn"
-            @click="switchToManual"
-        >
-          Manual
-        </button>
-      </div>
-    </div>
-
-    <!-- Active Config Display -->
-    <div v-if="activeConfig" class="alert alert-success">
-      <strong>Active Config:</strong> {{ activeConfig.name }}
+    <!-- Active Config -->
+    <div v-if="activeConfig" class="alert alert-primary d-flex align-items-center gap-2 shadow-sm">
+      <i class="bi bi-check-circle-fill"></i>
+      <div><strong>Active:</strong> {{ activeConfig.name }}</div>
     </div>
 
     <!-- Config Table -->
-    <table class="table table-bordered mt-3">
-      <thead>
-      <tr>
-        <th>Name</th>
-        <th>Temp Min</th>
-        <th>Temp Max</th>
-        <th>Humidity Min</th>
-        <th>Humidity Max</th>
-        <th>Actions</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-for="config in configs" :key="config.id">
-        <td>{{ config.name }}</td>
-        <td>{{ config.minTemp }}</td>
-        <td>{{ config.maxTemp }}</td>
-        <td>{{ config.minHum }}</td>
-        <td>{{ config.maxHum }}</td>
-        <td>
-          <button class="btn btn-success btn-sm" @click="apply(config.id)">Apply</button>
-          <button class="btn btn-warning btn-sm" @click="edit(config)">Edit</button>
-          <button class="btn btn-danger btn-sm" @click="remove(config.id)">Delete</button>
-        </td>
-      </tr>
-      </tbody>
-    </table>
+    <div class="table-responsive shadow-sm rounded bg-white p-3 mb-4">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+        <tr>
+          <th>Name</th>
+          <th>Temp Min</th>
+          <th>Temp Max</th>
+          <th>Humidity Min</th>
+          <th>Humidity Max</th>
+          <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="config in configs" :key="config.id">
+          <td>{{ config.name }}</td>
+          <td>{{ config.minTemp }}</td>
+          <td>{{ config.maxTemp }}</td>
+          <td>{{ config.minHum }}</td>
+          <td>{{ config.maxHum }}</td>
+          <td class="d-flex gap-1">
+            <button class="btn btn-outline-success btn-sm" @click="apply(config.id)" title="Apply this config">
+              <i class="bi bi-check2-circle"></i>
+            </button>
+            <button class="btn btn-outline-warning btn-sm" @click="edit(config)" title="Edit config">
+              <i class="bi bi-pencil-square"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm" @click="remove(config.id)" title="Delete config">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
 
-    <!-- Add/Edit Form -->
-    <form @submit.prevent="save" class="mt-4">
-      <h4>{{ form.id ? 'Edit Config' : 'Create New Config' }}</h4>
-      <div class="row">
-        <div class="col">
-          <p class="fw-semibold">Config Name</p>
-          <input v-model="form.name" placeholder="Name" class="form-control mb-2" required/>
-        </div>
+    <!-- Config Form -->
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h4 class="card-title mb-3 text-secondary">
+          {{ form.id ? '✏️ Edit Configuration' : '➕ Create New Configuration' }}
+        </h4>
+        <form @submit.prevent="save">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Config Name</label>
+              <input v-model="form.name" class="form-control" required />
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Temp Min (°C)</label>
+              <input type="number" v-model.number="form.minTemp" class="form-control" required />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Temp Max (°C)</label>
+              <input type="number" v-model.number="form.maxTemp" class="form-control" required />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Humidity Min (%)</label>
+              <input type="number" v-model.number="form.minHum" class="form-control" required />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Humidity Max (%)</label>
+              <input type="number" v-model.number="form.maxHum" class="form-control" required />
+            </div>
+          </div>
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi" :class="form.id ? 'bi-save2' : 'bi-plus-circle'"></i>
+              {{ form.id ? 'Update' : 'Add' }}
+            </button>
+            <button type="button" class="btn btn-secondary" @click="reset">
+              <i class="bi bi-x-circle"></i> Cancel
+            </button>
+          </div>
+        </form>
       </div>
-      <div class="row">
-        <div class="col">
-          <p class="fw-semibold">Temp min</p>
-          <input v-model.number="form.minTemp" placeholder="Temp Min" class="form-control mb-2" required/>
-          <p class="fw-semibold">Temp max</p>
-          <input v-model.number="form.maxTemp" placeholder="Temp Max" class="form-control mb-2" required/>
-        </div>
-        <div class="col">
-          <p class="fw-semibold">Humidity min</p>
-          <input v-model.number="form.minHum" placeholder="Humidity Min" class="form-control mb-2" required/>
-          <p class="fw-semibold">Humidity max</p>
-          <input v-model.number="form.maxHum" placeholder="Humidity Max" class="form-control mb-2" required/>
-        </div>
-      </div>
-      <button type="submit" class="btn btn-primary">{{ form.id ? 'Update' : 'Add' }}</button>
-      <button type="button" class="btn btn-secondary ms-2" @click="reset">Cancel</button>
-    </form>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { addConfig, applyConfig, deleteConfig, fetchActiveConfig, getAllConfigs, updateConfig, setMode } from '@/service/api'
+import {
+  addConfig, applyConfig, deleteConfig,
+  fetchActiveConfig, getAllConfigs, updateConfig
+} from '@/service/api'
 
 const configs = ref([])
 const activeConfig = ref(null)
-const isAuto = ref(true) // Tracks if the mode is Auto or Manual
 
 const form = ref({
   id: null,
@@ -160,24 +167,12 @@ const reset = () => {
   }
 }
 
-// Switch to Auto Mode
-const switchToAuto = async () => {
-  isAuto.value = true
-  await setMode(true) // Call backend to set the mode to auto
-}
-
-// Switch to Manual Mode
-const switchToManual = async () => {
-  isAuto.value = false
-  await setMode(false) // Call backend to set the mode to manual
-}
-
 onMounted(fetchConfigs)
 </script>
 
-
 <style scoped>
-.container {
-  padding-top: 20px;
+.table td,
+.table th {
+  vertical-align: middle;
 }
 </style>

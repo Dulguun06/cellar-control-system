@@ -25,6 +25,7 @@
 import DonutChart from "@/components/DonutChart.vue";
 import SensorGraph from "@/components/SensorGraph.vue";
 import RelayStatus from "@/components/RelayStatus.vue";
+
 </script>
 
 <style scoped>
